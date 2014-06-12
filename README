@@ -1,0 +1,25 @@
+Xmodemserver - A file server written in C using the XMODEM protocol to transfer files. 
+
+Eric Williams
+Assignment 4
+CSC209, Spring 2014
+
+OVERVIEW:
+
+Clients send files and the server accepts them, and stores them on disk. The server uses Select to ensure that it does not block waiting for clients to send files. Clients are added and stored in a linked list by the server, until they are dropped, time out, or have no more data to send. A sample client is provided, along with a helper function for storing files, and a helper function that computes and checks CRC codes.
+
+CLIENT USAGE:
+
+Arguments: client1 <hostname> <port> <filename> 
+
+SERVER USAGE:
+
+The server is meant to be run until killed. Simply running the binary will start the server until it is killed, or crashes (hopefully not!).
+
+COMPILING:
+
+Running "make" will compile the server using the default port number, in this case, 50179 (an arbitrary port I picked). If you would like to specify a port, do "make PORT=yourporthere" and replace yourporthere with the port you like to use.
+
+
+
+
