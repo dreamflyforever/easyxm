@@ -37,7 +37,6 @@ struct client {
 	int inverse_block;    // the inverse block number 
 	unsigned short crca;   // the first crc of the current block as provided by client	
 	unsigned short crcb;   // the second crc of the current block as provided by client
-	struct client *next;  // a pointer to the next client in the list
 };
 
 #define XMODEM_KEY 0x1021

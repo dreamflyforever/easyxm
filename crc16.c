@@ -38,7 +38,6 @@ void crc_byte(unsigned short *reg, unsigned int key, unsigned int next_byte) {
 key: CRC16 key being used
 message: message to be crc'd.
  */
-
 unsigned short crc_message(unsigned int key,  unsigned char *message, int num_bytes) {
 	unsigned short reg = 0;
 	int i;
@@ -52,5 +51,3 @@ unsigned short crc_message(unsigned int key,  unsigned char *message, int num_by
 	}
 	return reg;
 }
-
-
