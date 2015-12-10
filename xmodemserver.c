@@ -30,7 +30,7 @@ int state;
 /* A helper function for processing a client. This functions covers all states
    except the finished state. This function takes in the argument toplist (the
    top of the linked list, and cl, the current client node/struct. */
-void processclient(struct client *cl)
+int processclient(struct client *cl)
 {
 	/* Variable used for writing ACK, NAK, and other exciting control codes */
 	char acker;
@@ -48,7 +48,7 @@ void processclient(struct client *cl)
 
 		if (read(cl->fd,  &cl->filename, 20) <= 0) {
 			fprintf(stderr, "%s:%d\n", __func__, __LINE__);
-			exit(0);
+			return 0;
 		}
 		printf("%s:%d--->filename: %s\n", __func__, __LINE__, cl->filename);
 		readin = 1;
@@ -272,6 +272,8 @@ void processclient(struct client *cl)
 	if ( cl->state == finished ) {
 		cl->state = initial;
 	}
+
+	return 1;
 }
 
 
@@ -296,7 +298,7 @@ int main(void)
 	while (1) {
 		processclient(cl);
 	}
-	
+	printf("-------------------\n");
 	free(cl);
 	close(cl->fd);
 	return 1;
