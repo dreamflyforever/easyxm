@@ -25,8 +25,6 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-/* Variable to hold the state*/
-int state;
 /* A helper function for processing a client. This functions covers all states
    except the finished state. This function takes in the argument toplist (the
    top of the linked list, and cl, the current client node/struct. */
