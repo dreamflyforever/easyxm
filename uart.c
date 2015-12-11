@@ -25,7 +25,6 @@ int name_arr[] = {
 	115200, 38400, 19200, 9600, 4800, 2400, 1200,  300,
 };
 
-
 int set_speed(int fd, int speed)
 {
 	int i;
@@ -55,6 +54,7 @@ int set_parity(int fd,int databits,int stopbits,int parity)
 		perror("SetupSerial 1");
 		return(FALSE);
 	}
+
 	options.c_cflag &= ~CSIZE;
 	switch (databits) {
 	case 7:

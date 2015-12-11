@@ -35,19 +35,18 @@ int processclient(struct client *cl)
 	/* Variable used for writing ACK, NAK, and other exciting control codes */
 	char acker;
 
+	switch (cl->state) {
 	/* If client is in the initial state */
-	if ( cl->state == initial ) {
-
-		/* Variable to determine if network newline has been found */
+	case initial: 
+	{	/* Variable to determine if network newline has been found */
 		int readin = 0;
 
 		/* Read in one byte at a time so that the read() call doesn't block, top when
 		   network newline has been found and add a null terminator at the end of the
 		   filename. */
-		printf("%s:%d\n", __func__, __LINE__);
-
+		memset(cl->filename, 0, 20);
 		if (read(cl->fd,  &cl->filename, 20) <= 0) {
-			fprintf(stderr, "%s:%d\n", __func__, __LINE__);
+			/*XXX*/
 			return 0;
 		}
 		printf("%s:%d--->filename: %s\n", __func__, __LINE__, cl->filename);
@@ -66,40 +65,38 @@ int processclient(struct client *cl)
 		if ( write(cl->fd, "C", 1) < 1) {
 			perror("Writing C failed");
 			cl->state = finished;
-		}	
+		}
 	}
-
+		break;
 	/* If client is in the pre_block state */
-	if ( cl->state == pre_block ) {
-
-		/* Temporary buffer to hold in any incoming control codes. 2048 is 
+	case pre_block:
+	{	/* Temporary buffer to hold in any incoming control codes. 2048 is 
 		   overkill, yes, however it can't hurt to be safe. */
 		char prebuf[2048];
 
 		/* Read in one byte at a time from the client */
-		if ( read(cl->fd, &prebuf[0], 1) == 1) {
-			printf("%s:%d\n", __func__, __LINE__);
+		if (read(cl->fd, &prebuf[0], 1) == 1) {
+			printf("*");
 
 			/* If EOT is received, drop client by transitioning to finish state */
-			if ( prebuf[cl->inbuf] == EOT ) {
+			if (prebuf[cl->inbuf] == EOT) {
 
 				/* Close file pointer */
 				fclose(cl->fp);
 
 				/* Set acker to ACK control code and write it to the client */
 				acker = ACK;
-				printf("%s:%d\n", __func__, __LINE__);
+				printf("receiver successful\n");
 				if (write(cl->fd, &acker, sizeof(char)) < 1) {
 					perror("writing ACK for EOT in pre_block failed");
 				}
 
 				cl->state = finished;
-
 			}
 
 			/* If SOH block is received, set the expected blocksize on client to 128, 
 			   and transition to get_block */
-			if ( prebuf[0] == SOH ) {
+			if (prebuf[0] == SOH) {
 				cl->blocksize = 128;
 				cl->state = get_block;
 
@@ -107,45 +104,41 @@ int processclient(struct client *cl)
 
 			/* If STX block is received, set the expected blocksize on client to 1024, 
 			   and transition to get_block */
-			if ( prebuf[0] == STX ) {
+			if (prebuf[0] == STX) {
 				cl->blocksize = 1024;
 				cl->state = get_block;
 
 			}
-		}
-
-		else{
+		} else {
 			perror("pre_block read fail");
 
-		} 
-
+		}
 	}
-
+		break;
 	/* If client is in the get_block state */
-	if ( cl->state == get_block ) {
+	case get_block:
 
 		/* If server is expecting a SOH block */
 		if (cl->blocksize == 128) {
 
 			/* Read in one byte for current block number and store it in the client's
 			   current_block attribute */
-			if ( read(cl->fd, &cl->current_block, 1) < 1) {
+			if (read(cl->fd, &cl->current_block, 1) < 1) {
 				perror("reading in current_block failed in SOH, get_block");
 			}
 
 			/* Read in one byte for inverse block number and store it in the client's
 			   inverse_block attribute */
-			if ( read(cl->fd, &cl->inverse_block, 1) < 1) {
+			if (read(cl->fd, &cl->inverse_block, 1) < 1) {
 				perror("reading in inverse_block failed in SOH, get_block");
 			}
 
 			/* Read in the actual payload to the client's buf attribute, one byte at a
 			   time */
-			while ( cl->inbuf < 128 ) {
-				if ( read(cl->fd, &cl->buf[cl->inbuf], 1) == 1) {
+			while (cl->inbuf < 128) {
+				if (read(cl->fd, &cl->buf[cl->inbuf], 1) == 1) {
 					cl->inbuf++;
-				}
-				else {
+				} else {
 					perror("get_block_soh_read_failure\n");
 				}
 
@@ -159,7 +152,6 @@ int processclient(struct client *cl)
 			}
 
 		}
-
 		/* If server is expecting a STX block */
 		if (cl->blocksize == 1024 ) {
 
@@ -177,11 +169,10 @@ int processclient(struct client *cl)
 
 			/* Read in the actual payload to the client's buf attribute, one byte at a
 			   time */
-			while ( cl->inbuf < 1024 ) {
+			while (cl->inbuf < 1024) {
 				if ( read(cl->fd, &cl->buf[cl->inbuf], 1) == 1) {
 					cl->inbuf++;
-				}
-				else {
+				} else {
 					perror("get_block_stx_read_failure");
 				}
 			}
@@ -195,15 +186,15 @@ int processclient(struct client *cl)
 			}
 
 		}
-	}
+		break;
 
-	if ( cl->state == check_block ) {
+	case check_block:
 
 		/* Reset buffer index after previous block */
 		cl->inbuf = 0;
 
 		/* If inverse block and current block don't corresond, write ACK and drop client */
-		if ( (255 - cl->inverse_block)  != cl->current_block ) {
+		if ((255 - cl->inverse_block) != cl->current_block) {
 
 			/* Set acker to the ACK control code and write it */
 			acker = ACK;
@@ -222,8 +213,8 @@ int processclient(struct client *cl)
 		}
 
 		/* If blocks are out of order, write ACK and drop client */
-		if ( cl->current_block != cl->previous_block + 1) {
-			if ( (cl->previous_block != 255) && (cl->current_block != 0) ) {
+		if (cl->current_block != cl->previous_block + 1) {
+			if ((cl->previous_block != 255) && (cl->current_block != 0)) {
 
 				/* Set acker to the ACK control code and write it */
 				acker = ACK;
@@ -235,18 +226,15 @@ int processclient(struct client *cl)
 		}
 
 		/* If CRC's don't match up, send NAK */
-		if ( crc_message(XMODEM_KEY, cl->buf, cl->blocksize) != ((cl->crca << 8) + cl->crcb) ) {
+		if (crc_message(XMODEM_KEY, cl->buf, cl->blocksize) != ((cl->crca << 8) + cl->crcb)) {
 
 			/* Set acker to NAK and write it */
 			acker = NAK;
 			if (write(cl->fd, &acker, sizeof(char)) < 1) {
 				perror("NAK failed to write in check_block for invalid CRC");
 			}
-		}
-
-		/* If none of the above error checks are triggered */
-		else {
-
+		} else {
+			/* If none of the above error checks are triggered */
 			/* Set previous block to current, and account for wrapping at block number 
 			   255 */
 			cl->previous_block = cl->current_block;
@@ -267,12 +255,15 @@ int processclient(struct client *cl)
 			/* Transition back to the pre_block */
 			cl->state = pre_block;
 		}
-	}
-
-	if ( cl->state == finished ) {
+		break;
+	case finished:
 		cl->state = initial;
+		break;
+	
+	default:
+		printf("error status\n");
+		break;
 	}
-
 	return 1;
 }
 
@@ -293,7 +284,6 @@ int main(void)
 		fprintf(stderr, "Set Parity Error\n");
 		exit(0);
 	}
-	printf("fd:%d\n", cl->fd);
 	/* Infinite while loop -- server must be killed */
 	while (1) {
 		processclient(cl);

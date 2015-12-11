@@ -17,12 +17,16 @@
 #define SUB 'c'
 
 enum sendstate {
-	initial, // send filename
-	handshake, // wait for C
-	send_block, // read and send the block
-	wait_reply, // wait for packet to be ack'd
+	/*send filenameI*/
+	initial,
+	/*wait for C*/
+	handshake,
+	/*read and send the block*/
+	send_block,
+	/*wait for packet to be ack'd*/
+	wait_reply,
 	finish
-}; // send eot
+};/*send eot*/
 
 #define XMODEM_KEY 0x1021
 
@@ -30,7 +34,8 @@ enum sendstate {
 int main(int argc, char* argv[])
 {
 	int uart_fd, len;
-	unsigned char buf[128]; // payloads
+	/*payloads*/
+	unsigned char buf[128];
 	char temp;
 
 	if ( argc != 3) {
@@ -59,18 +64,17 @@ int main(int argc, char* argv[])
 	int current_block, readblock;
 
 	while (1) {
-		if (state == initial) {
+		switch (state) {
+		case initial:
 			write(uart_fd, argv[2], strlen(argv[2]));
-			///write(uart_fd, "\r\n", 2);
 			current_block = 1;
 			readblock = 1;
 			state = handshake;
 			printf("Client sent filename and entering handshake.\n");
-		}
-
-		if (state == handshake) {
+			break;
+		
+		case handshake:
 			while ((len = read(uart_fd, &temp, 1)) > 0) {
-				printf("----------->\n");
 				if (temp == 'C') {
 					printf("Client found C; entering send_block\n");
 					state = send_block;
@@ -81,8 +85,9 @@ int main(int argc, char* argv[])
 				fprintf(stderr, "Server dropped client\n");
 				exit(1);
 			}
-		}
-		if (state == send_block) {
+			break;
+
+		case send_block:
 			if (readblock) {
 				readblock = 0;
 				len = fread(buf, 1, 128, fp);
@@ -98,7 +103,9 @@ int main(int argc, char* argv[])
 			temp = SOH;
 			printf("Client sending the block+overhead\n");
 			write(uart_fd, &temp, 1);
-			printf("Sending block %d and inverse %d\n", char_block, 255-char_block);
+			printf("Sending block %d and inverse %d\n",
+				char_block,
+				255-char_block);
 			write(uart_fd, &char_block, 1);
 			char_block = 255 - char_block;
 			write(uart_fd, &char_block, 1);
@@ -113,18 +120,20 @@ int main(int argc, char* argv[])
 			write(uart_fd, &char_block, 1);
 			printf("Client moving to wait_reply\n");
 			state = wait_reply;
-		}
+			break;
 
-		if (state == wait_reply) {
+		case wait_reply:
 			while ((len = read(uart_fd, &temp, 1)) > 0) {
 				if (temp == NAK) {
-					printf("Client received nak; moving back to send_block\n");
+					printf("Client received nak; moving back \
+					to send_block\n");
 					state = send_block;
 					break;
 				}
 
 				if (temp == ACK) {
-					printf("Client received ack; moving to send_block for next block\n");
+					printf("Client received ack; moving to \
+					send_block for next block\n");
 					state = send_block;
 					readblock = 1;
 					current_block++;
@@ -133,9 +142,10 @@ int main(int argc, char* argv[])
 					break;
 				}
 			}
-		}
 
-		if (state == finish) {
+			break;
+
+		case finish:
 			temp = EOT;
 			printf("Client sent eot, waiting for ack\n");
 			write(uart_fd, &temp, 1);
@@ -143,7 +153,8 @@ int main(int argc, char* argv[])
 				if (temp == NAK) {
 					temp = EOT;
 					write(uart_fd, &temp, 1);
-					printf("Client received nak to its EOT! Sending new EOT\n");
+					printf("Client received nak to its EOT!\
+					Sending new EOT\n");
 					break;
 				}
 
@@ -152,6 +163,10 @@ int main(int argc, char* argv[])
 					exit(0);
 				}
 			}
+			break;
+		default:
+			printf("error\n");
+			break;
 		}
 	}
 
